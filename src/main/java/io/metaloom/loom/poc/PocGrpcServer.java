@@ -5,11 +5,15 @@ import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.grpc.ServerInterceptor;
+import io.grpc.ServerInterceptors;
+import io.grpc.ServerServiceDefinition;
 import io.metaloom.loom.poc.proto.HelloReply;
 import io.metaloom.loom.poc.proto.HelloRequest;
 import io.metaloom.loom.poc.proto.VertxGreeterGrpc;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.grpc.BlockingServerInterceptor;
 import io.vertx.grpc.VertxServer;
 import io.vertx.grpc.VertxServerBuilder;
 
@@ -37,9 +41,11 @@ public class PocGrpcServer {
 			}
 		};
 
+		ServerInterceptor wrappedAuthInterceptor = BlockingServerInterceptor.wrap(vertx, new AuthInterceptor());
+		ServerServiceDefinition authedService = ServerInterceptors.intercept(service, wrappedAuthInterceptor);
 		rpcServer = VertxServerBuilder
 			.forPort(vertx, 0)
-			.addService(service)
+			.addService(authedService)
 			.build();
 	}
 

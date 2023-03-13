@@ -1,16 +1,16 @@
 package io.metaloom.loom.poc;
 
-import java.util.concurrent.CompletableFuture;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.metaloom.loom.poc.proto.GreeterGrpc;
 import io.metaloom.loom.poc.proto.HelloReply;
 import io.metaloom.loom.poc.proto.HelloRequest;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.grpc.client.GrpcClient;
+import io.vertx.grpc.client.GrpcClientResponse;
 
 public class PocGrpcClient {
 
@@ -24,23 +24,19 @@ public class PocGrpcClient {
 		this.server = SocketAddress.inetSocketAddress(port, host);
 	}
 
-	public HelloReply sayHello(String name) {
-		CompletableFuture<HelloReply> fut = new CompletableFuture<>();
-		client
+	public Future<HelloReply> sayHello(String name) throws Throwable {
+		return client
 			.request(server, GreeterGrpc.getSayHelloMethod()).compose(request -> {
+				request.headers().add("Test", "testvalue");
 				request.end(HelloRequest
 					.newBuilder()
 					.setName(name)
 					.build());
-				return request.response().compose(response -> response.last());
-			}).onFailure(error -> {
-				log.error("Request failed", error);
-				fut.completeExceptionally(error);
-			})
-			.onSuccess(reply -> {
-				fut.complete(reply);
+
+				return request.response()
+					.map(GrpcClientUtils::errorMapper)
+					.compose(GrpcClientResponse::last);
 			});
-		return fut.join();
 	}
 
 }
