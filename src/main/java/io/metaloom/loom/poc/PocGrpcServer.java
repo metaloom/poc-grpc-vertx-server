@@ -41,10 +41,25 @@ public class PocGrpcServer {
 		JWTAuth jwtAuth = JWTAuth.create(vertx, jwtConfig);
 
 		jwtServer = JWTGrpcServer.create(vertx, jwtAuth);
+
+		// Create the method handler which does require authentication
 		jwtServer.callHandler(GreeterGrpc.getSayHelloMethod(), true, request -> {
 			User user = request.user();
 			request.handler(hello -> {
-				log.info("Server got hello request with name {}", hello.getName());
+				log.info("Server got hello request with name {} from {}", hello.getName(), user.subject());
+				GrpcServerResponse<HelloRequest, HelloReply> response = request.response();
+				HelloReply reply = HelloReply.newBuilder()
+					.setMessage("Reply with " + hello.getName())
+					.build();
+				response.end(reply);
+			});
+		});
+
+		// Create the public method handler which does not require authentication
+		jwtServer.callHandler(GreeterGrpc.getSayHello2Method(), false, request -> {
+			User user = request.user();
+			request.handler(hello -> {
+				log.info("Server got public hello2 request with name {} from {}", hello.getName(), user);
 				GrpcServerResponse<HelloRequest, HelloReply> response = request.response();
 				HelloReply reply = HelloReply.newBuilder()
 					.setMessage("Reply with " + hello.getName())

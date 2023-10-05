@@ -21,7 +21,10 @@ public class PocGrpcClient {
 	private SocketAddress socket;
 
 	public PocGrpcClient(Vertx vertx, String host, int port, String token) {
-		this.client = JWTGrpcClient.create(vertx).withCredentials(new TokenCredentials(token));
+		this.client = JWTGrpcClient.create(vertx);
+		if (token != null) {
+			client = client.withCredentials(new TokenCredentials(token));
+		}
 		this.socket = SocketAddress.inetSocketAddress(port, host);
 	}
 
@@ -33,9 +36,20 @@ public class PocGrpcClient {
 					.setName(name)
 					.build());
 
-				
 				return request.response()
-					.map(GrpcClientUtils::errorMapper)
+					.compose(GrpcClientResponse::last);
+			});
+	}
+
+	public Future<HelloReply> sayPublicHello(String name) throws Throwable {
+		return client
+			.request(socket, GreeterGrpc.getSayHello2Method()).compose(request -> {
+				request.end(HelloRequest
+					.newBuilder()
+					.setName(name)
+					.build());
+
+				return request.response()
 					.compose(GrpcClientResponse::last);
 			});
 	}
